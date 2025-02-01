@@ -2,9 +2,9 @@
 Upload an Excel file to generate a Sankey chart.
 <br/> Only the employee hours file is provided.
 ### step1 下載檔案Sankey_Chart_generator.py
-將檔案儲存在C槽或是常用的資料夾中
+將檔案儲存在C槽或是常用的資料夾中，並將路徑複製下來
 ![image](https://github.com/user-attachments/assets/2fcb67bb-123b-4229-b574-eb328b343c96)
-並將路徑複製下來
+
 ### step2 先將需要的套件下載
 在電腦中的搜尋欄位打上"cmd"或"命令提示字元"輸入下面的指令
 ```python=
@@ -26,6 +26,7 @@ cd 你的路徑
 streamlit run Sankey_Chart_generator.py
 ```
 ![image](https://github.com/user-attachments/assets/c6075306-c007-4fce-976b-8fbd0b508d62)
+<br/>
 如果要終止該應用程式只需在終端中按 Ctrl + c
 ![image](https://github.com/user-attachments/assets/fa1d499c-2341-45b5-aa8c-10f64a34209f)
 
