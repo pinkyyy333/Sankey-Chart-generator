@@ -25,9 +25,14 @@ cd 你的路徑
 ```
 streamlit run Sankey_Chart_generator.py
 ```
+
 ![image](https://github.com/user-attachments/assets/c6075306-c007-4fce-976b-8fbd0b508d62)
-<br/>
-如果要終止該應用程式只需在終端中按 Ctrl + c
+<br/>輸入完後會自動跳出網頁，或是在瀏覽器輸入以下網址也可以
+```
+Local URL: http://localhost:8501
+Network URL: http://192.168.16.129:8501 （該網址每個人會不同）
+```
+<br/>如果要終止該應用程式只需在終端中按 Ctrl + c
 ![image](https://github.com/user-attachments/assets/fa1d499c-2341-45b5-aa8c-10f64a34209f)
 
 3. 點選browse file並上傳xlsx檔
