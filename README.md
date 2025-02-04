@@ -39,8 +39,6 @@ Network URL: http://192.168.16.129:8501 （該網址每個人會不同）
 ![image](https://github.com/user-attachments/assets/e71f335f-29cb-4f0f-986d-5c1d37ba03c5)
 
 4. 點取下拉式選單可選取欲觀察的成員，或是也可以按下全選
-![image](https://github.com/user-attachments/assets/b7b61638-18fc-4d05-a15e-3b7d28abaf75)
 
 5. 接著就可以透過sankey chart來觀察每位成員的工時比例了
-![image](https://github.com/user-attachments/assets/b15bb468-73ce-45c9-a551-a66ad8b84e08)
 
