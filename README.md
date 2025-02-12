@@ -1,33 +1,14 @@
 # Sankey-Chart-generator
 Upload an Excel file to generate a Sankey chart.
 <br/> Only the employee hours file is provided.
-### step1 下載檔案Sankey_Chart_generator.py
-將檔案儲存在C槽或是常用的資料夾中，並將路徑複製下來
+### step1 下載檔案sankey.zip
 ![image](https://github.com/user-attachments/assets/2fcb67bb-123b-4229-b574-eb328b343c96)
 
-### step2 先將需要的套件下載
-在電腦中的搜尋欄位打上"cmd"或"命令提示字元"輸入下面的指令
-```python=
-pip install streamlit
-pip install pandas
-pip install pyecharts
-pip install streamlit-echarts
-```
-### step3 執行檔案
-在電腦中的搜尋欄位打上"cmd"或"命令提示字元"
-1. 輸入路徑，例如：cd C:\sankey
-```
-cd 你的路徑
-```
-![image](https://github.com/user-attachments/assets/4e2a8701-4477-4e8f-a53b-cd3edb671f94)
+### step2 下載完sankey.zip之後解壓縮
 
-2. 開啟檔案輸入
-```
-streamlit run Sankey_Chart_generator.py
-```
+### step3 點兩下test.bat檔案
 
-![image](https://github.com/user-attachments/assets/c6075306-c007-4fce-976b-8fbd0b508d62)
-<br/>輸入完後會自動跳出網頁，或是在瀏覽器輸入以下網址也可以
+點完後會自動安裝套件，順利安裝完會跳出網頁，或是在瀏覽器輸入以下網址也可以打開網頁
 ```
 Local URL: http://localhost:8501
 Network URL: http://192.168.16.129:8501 （該網址每個人會不同）
