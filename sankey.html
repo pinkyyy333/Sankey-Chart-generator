@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成員工時調查-Sankey Chart 產生器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="sankey.css">
+
+</head>
+<body>
+    <h1>成員工時調查-Sankey Chart 產生器</h1>
+    <p>請上傳 Excel 檔案，系統會自動產生 Sankey 圖表</p>
+    
+    <div class="container">
+        <div class="upload-section">
+            <div class="section-title">上傳 Excel 檔案</div>
+            <div class="drag-drop-area" id="dragDropArea">
+                <div class="folder-icon">📁</div>
+                <div>Drag and drop file here</div>
+                <div class="file-info">Limit 200MB per file • XLSX</div>
+                <button class="browse-btn" onclick="document.getElementById('fileInput').click()">Browse files</button>
+                <input type="file" id="fileInput" accept=".xlsx" style="display: none;" />
+            </div>
+            
+            <div id="fileList" class="file-list"></div>
+        </div>
+        
+        <div id="userSelectSection" class="user-select-container hidden">
+            <div class="section-title">選擇要顯示的使用者</div>
+            
+            <div class="select-actions">
+                <button class="action-btn" id="selectAllBtn">全選</button>
+                <button class="action-btn" id="selectNoneBtn">清除</button>
+            </div>
+            
+            <div class="all-users-grid" id="allUsersGrid">
+                <!-- User checkboxes will be added here -->
+            </div>
+            
+            <div class="section-title">已選擇的使用者</div>
+            <div class="selected-users" id="selectedUsers">
+                <!-- Selected user pills will be added here -->
+            </div>
+            
+            <div class="actions-container">
+                <button class="generate-btn" id="generateChartBtn">產生圖表</button>
+                <button class="options-btn" id="optionsBtn">⋮</button>
+            </div>
+        </div>
+        
+        <div id="chartSection" class="hidden">
+            <div class="section-title">Sankey 圖表</div>
+            <div id="chartContainer" class="chart-container"></div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        有問題請聯絡: <a href="mailto:pineapple168.mg11@nycu.edu.tw">cphsiao-20250201</a>
+    </div>
+    
+    <script>
+        let workData = null;
+        let uniqueNames = [];
+        let selectedNames = [];
+        let chart = null;
+        
+        // Set up file input and drag-drop area
+        const fileInput = document.getElementById('fileInput');
+        const dragDropArea = document.getElementById('dragDropArea');
+        const fileList = document.getElementById('fileList');
+        
+        // Handle file selection
+        fileInput.addEventListener('change', handleFileSelection);
+        
+        // Set up drag and drop
+        dragDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragDropArea.style.borderColor = '#4CAF50';
+        });
+        
+        dragDropArea.addEventListener('dragleave', () => {
+            dragDropArea.style.borderColor = '#aaa';
+        });
+        
+        dragDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDropArea.style.borderColor = '#aaa';
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelection();
+            }
+        });
+        
+        function handleFileSelection() {
+            const file = fileInput.files[0];
+            
+            if (file) {
+                // Display file in the list
+                fileList.innerHTML = `
+                    <div class="file-item">
+                        <div>
+                            <span class="file-icon">📄</span>
+                            ${file.name}
+                        </div>
+                        <span class="file-remove" onclick="removeFile()">×</span>
+                    </div>
+                `;
+                
+                // Process the file
+                processExcelFile(file);
+            }
+        }
+        
+        function removeFile() {
+            fileInput.value = '';
+            fileList.innerHTML = '';
+            document.getElementById('userSelectSection').classList.add('hidden');
+            document.getElementById('chartSection').classList.add('hidden');
+            if (chart) {
+                chart.dispose();
+                chart = null;
+            }
+            workData = null;
+            uniqueNames = [];
+            selectedNames = [];
+        }
+        
+        function processExcelFile(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Get the first sheet
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                
+                // Convert to JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Check required columns
+                const requiredColumns = ["姓名", "公務預算工時總計", "專案任務工時總計"];
+                const hasRequiredColumns = requiredColumns.every(col => 
+                    jsonData.length > 0 && Object.keys(jsonData[0]).includes(col)
+                );
+                
+                if (!hasRequiredColumns) {
+                    alert("Excel 檔案缺少必要的欄位！請確認欄位名稱是否正確。");
+                    return;
+                }
+                
+                workData = jsonData;
+                
+                // Get unique names
+                uniqueNames = [...new Set(jsonData.map(row => row["姓名"]))];
+                
+                // Default select first 5 names (or all if less than 5)
+                selectedNames = uniqueNames.slice(0, Math.min(5, uniqueNames.length));
+                
+                // Initialize user selection grid
+                initializeUserGrid();
+                
+                // Show user selection section
+                document.getElementById('userSelectSection').classList.remove('hidden');
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function initializeUserGrid() {
+            const allUsersGrid = document.getElementById('allUsersGrid');
+            allUsersGrid.innerHTML = '';
+            
+            uniqueNames.forEach((name, index) => {
+                const isSelected = selectedNames.includes(name);
+                
+                const userHtml = `
+                    <div>
+                        <input type="checkbox" id="user-${index}" class="user-checkbox" ${isSelected ? 'checked' : ''} 
+                            onchange="toggleUser('${name}', this.checked)">
+                        <label for="user-${index}" class="user-label">${name}</label>
+                    </div>
+                `;
+                
+                allUsersGrid.innerHTML += userHtml;
+            });
+            
+            // Update selected users display
+            updateSelectedUsers();
+        }
+        
+        function toggleUser(name, isChecked) {
+            if (isChecked && !selectedNames.includes(name)) {
+                selectedNames.push(name);
+            } else if (!isChecked) {
+                selectedNames = selectedNames.filter(n => n !== name);
+            }
+            
+            updateSelectedUsers();
+        }
+        
+        function updateSelectedUsers() {
+            const selectedUsersContainer = document.getElementById('selectedUsers');
+            selectedUsersContainer.innerHTML = '';
+            
+            if (selectedNames.length === 0) {
+                selectedUsersContainer.innerHTML = '<div style="color: #999;">未選擇任何使用者</div>';
+                return;
+            }
+            
+            selectedNames.forEach(name => {
+                const pill = document.createElement('div');
+                pill.className = 'user-pill';
+                pill.innerHTML = `
+                    <span class="user-pill-text">${name}</span>
+                    <span class="user-pill-remove" onclick="removeSelectedUser('${name}')">×</span>
+                `;
+                selectedUsersContainer.appendChild(pill);
+            });
+        }
+        
+        function removeSelectedUser(name) {
+            // Update selectedNames array
+            selectedNames = selectedNames.filter(n => n !== name);
+            
+            // Update checkbox in grid
+            const index = uniqueNames.indexOf(name);
+            if (index !== -1) {
+                const checkbox = document.getElementById(`user-${index}`);
+                if (checkbox) checkbox.checked = false;
+            }
+            
+            // Update selected users display
+            updateSelectedUsers();
+        }
+        
+        // Action buttons event listeners
+        document.getElementById('selectAllBtn').addEventListener('click', function() {
+            selectedNames = [...uniqueNames];
+            initializeUserGrid();
+        });
+        
+        document.getElementById('selectNoneBtn').addEventListener('click', function() {
+            selectedNames = [];
+            initializeUserGrid();
+        });
+        
+        document.getElementById('generateChartBtn').addEventListener('click', function() {
+            if (selectedNames.length === 0) {
+                alert("請至少選擇一個使用者");
+                return;
+            }
+            
+            generateSankeyChart();
+            
+            // Show chart section
+            document.getElementById('chartSection').classList.remove('hidden');
+            
+            // 捲動到圖表區域
+            document.getElementById('chartSection').scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        function determineCategories(data) {
+            const columns = Object.keys(data[0]);
+            let categories = {};
+            
+            // 姓名欄位必須有
+            const nameIndex = columns.indexOf("姓名");
+            if (nameIndex === -1) return null;
+            
+            // 尋找公務預算和專案任務的索引
+            const publicBudgetIndex = columns.indexOf("公務預算工時總計");
+            const projectTaskIndex = columns.indexOf("專案任務工時總計");
+            
+            if (publicBudgetIndex === -1 || projectTaskIndex === -1) return null;
+            
+            // 針對不同類型的欄位進行分類
+            categories.names = ["姓名"];
+            
+            // 如果公務預算在專案任務之前
+            if (publicBudgetIndex < projectTaskIndex) {
+                categories.publicBudget = {
+                    total: "公務預算工時總計",
+                    details: columns.slice(nameIndex + 1, publicBudgetIndex)
+                };
+                
+                categories.projectTask = {
+                    total: "專案任務工時總計",
+                    details: columns.slice(publicBudgetIndex + 1, projectTaskIndex)
+                };
+                
+                categories.others = columns.slice(projectTaskIndex + 1);
+            } else {
+                categories.projectTask = {
+                    total: "專案任務工時總計",
+                    details: columns.slice(nameIndex + 1, projectTaskIndex)
+                };
+                
+                categories.publicBudget = {
+                    total: "公務預算工時總計",
+                    details: columns.slice(projectTaskIndex + 1, publicBudgetIndex)
+                };
+                
+                categories.others = columns.slice(publicBudgetIndex + 1);
+            }
+            
+            return categories;
+        }
+        
+        function generateSankeyChart() {
+            if (chart) {
+                chart.dispose();
+            }
+
+            // 選取資料
+            const filteredData = workData.filter(row => selectedNames.includes(row["姓名"]));
+            if (filteredData.length === 0) {
+                alert("沒有符合選擇條件的數據");
+                return;
+            }
+
+            const columns = Object.keys(filteredData[0]);
+            const publicTotalIdx = columns.indexOf("公務預算工時總計");
+            const projectTotalIdx = columns.indexOf("專案任務工時總計");
+
+            const snackCols = columns.slice(publicTotalIdx + 1, projectTotalIdx);
+            const stationeryCols = columns.slice(projectTotalIdx + 1);
+
+            let dfLong = [];
+
+            // 整理公務預算資料
+            filteredData.forEach(row => {
+                snackCols.forEach(col => {
+                    const value = parseFloat(row[col]);
+                    if (!isNaN(value) && value > 0) {
+                        dfLong.push({
+                            name: row["姓名"],
+                            subCategory: col,
+                            totalCategory: "公務預算工時總計",
+                            value: value
+                        });
+                    }
+                });
+            });
+
+            // 整理專案任務資料
+            filteredData.forEach(row => {
+                stationeryCols.forEach(col => {
+                    const value = parseFloat(row[col]);
+                    if (!isNaN(value) && value > 0) {
+                        dfLong.push({
+                            name: row["姓名"],
+                            subCategory: col,
+                            totalCategory: "專案任務工時總計",
+                            value: value
+                        });
+                    }
+                });
+            });
+
+            // 建立節點
+            const nodesSet = new Set();
+            dfLong.forEach(item => {
+                nodesSet.add(item.name);
+                nodesSet.add(item.subCategory);
+                nodesSet.add(item.totalCategory);
+            });
+            const nodes = Array.from(nodesSet).map(name => ({ name }));
+
+            // 建立連結
+            const links = [];
+
+            dfLong.forEach(item => {
+                links.push({
+                    source: item.name,
+                    target: item.subCategory,
+                    value: item.value
+                });
+                links.push({
+                    source: item.subCategory,
+                    target: item.totalCategory,
+                    value: item.value
+                });
+            });
+
+            // 動態調整圖表高度
+            const chartContainer = document.getElementById('chartContainer');
+            const minHeight = 700;
+            const heightPerNode = 30;
+            chartContainer.style.height = Math.max(minHeight, nodes.length * heightPerNode) + 'px';
+
+            chart = echarts.init(chartContainer);
+
+            const option = {
+                title: {
+                    text: 'Sankey 圖表',
+                    left: 'center',
+                    top: 10,
+                    textStyle: { fontSize: 20 }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
+                    formatter: function (params) {
+                        if (params.dataType === 'node') {
+                            return params.name;
+                        } else {
+                            return `${params.data.source} → ${params.data.target}: ${params.data.value}`;
+                        }
+                    }
+                },
+                series: [
+                    {
+                        type: 'sankey',
+                        left: 50,
+                        right: 150,
+                        top: 50,
+                        bottom: 50,
+                        nodeWidth: 20,
+                        nodeGap: 15,
+                        layoutIterations: 100,
+                        data: nodes,
+                        links: links,
+                        emphasis: { focus: 'adjacency' },
+                        lineStyle: {
+                            color: 'source',
+                            curveness: 0.5,
+                            opacity: 0.3
+                        },
+                        itemStyle: {
+                            borderWidth: 1,
+                            borderColor: '#aaa'
+                        },
+                        label: {
+                            fontSize: 14,
+                            position: 'right',
+                            formatter: '{b}'
+                        },
+                        draggable: true,
+                        animation: true,
+                        animationDuration: 1000,
+                        animationEasing: 'cubicOut'
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+
+            window.addEventListener('resize', function () {
+                if (chart) chart.resize();
+            });
+        }
+    </script>
+</body>
+</html>
